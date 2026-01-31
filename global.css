@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+* {
+    font-family: "Google Sans", sans-serif;
+}
+
+:root {
+    --azul-claro: #a1caff;
+    --azul-escuro: #006eff;
+    --azul-footer: #0C326F;
+}
+
+#messageShadow {
+    box-shadow: -1px 8px 20px 1px rgba(0,0,0,0.38);
+}
+
+#barra{
+    animation: barra 4s infinite;
+}
+@keyframes barra {
+    0% {
+        width: 0;
+    }
+    100% {
+        width: 100%;
+    }
+}

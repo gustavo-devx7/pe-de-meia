@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>gov.com.br/pe.de.meia</title>
+  <title>Governo Federal</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,21 +13,30 @@
     href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap"
     rel="stylesheet">
 
-
-
-
-  <script src="https://cdn.utmify.com.br/scripts/utms/latest.js" data-utmify-prevent-xcod-sck data-utmify-prevent-subids
-    async defer></script>
-
   <script>
-    window.pixelId = "69652c9bd63f004da0c6b0a4";
-    var a = document.createElement("script");
-    a.setAttribute("async", "");
-    a.setAttribute("defer", "");
-    a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-    document.head.appendChild(a);
-  </script>
+    (function () {
+      var isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.port === '5173'
+      if (isLocal) {
+        console.log('Skipping external pixel in development')
+        return
+      }
 
+      window.pixelId = "6a188c0cb627b7f5c25cfc59";
+      var a = document.createElement("script");
+      a.setAttribute("async", "");
+      a.setAttribute("defer", "");
+      a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
+      document.head.appendChild(a);
+
+      var b = document.createElement('script')
+      b.setAttribute('async', '')
+      b.setAttribute('defer', '')
+      b.setAttribute('src', 'https://cdn.utmify.com.br/scripts/utms/latest.js')
+      b.setAttribute('data-utmify-prevent-xcod-sck', '')
+      b.setAttribute('data-utmify-prevent-subids', '')
+      document.head.appendChild(b)
+    })()
+  </script>
 
 
 </head>

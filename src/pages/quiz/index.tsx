@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { useNavigateWithParams } from "../../hooks/useNavigateWithParams";
+import { redirectWithParams } from "../../utils/redirectWithParams";
 import atendente from '../../images/atendente.png';
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
 
 function Quiz() {
-    const navigate = useNavigateWithParams();
+    
 
     const textos = [
         ["Concluí o Ensino Médio antes de 2015",
@@ -59,7 +59,7 @@ function Quiz() {
 
     function changeText() {
         if (step === TOTAL_STEPS - 1) {
-            navigate("/getInfos");
+            redirectWithParams("/getInfos");
             return;
         }
 

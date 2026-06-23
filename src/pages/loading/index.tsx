@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigateWithParams } from "../../hooks/useNavigateWithParams";
+import { redirectWithParams } from "../../utils/redirectWithParams";
 import gov1 from "../../images/gov1.png";
 import gov2 from "../../images/gov2.png";
 
 
 function LoadingPage() {
-    const navigate = useNavigateWithParams();
+    
 
     const textos = [
         "Analisando seus dados...",
@@ -25,7 +25,7 @@ function LoadingPage() {
             setStep(prev => {
                 if (prev === totalSteps - 1) {
                     clearInterval(interval);
-                    navigate("/checkMate");
+                    redirectWithParams("/checkMate");
                     return prev;
                 }
                 return prev + 1;
@@ -33,7 +33,7 @@ function LoadingPage() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [navigate, totalSteps]);
+    }, [totalSteps]);
 
     return (
         <div className="flex flex-col min-h-screen bg-gray-100">

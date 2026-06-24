@@ -95,6 +95,7 @@ export default defineConfig(({ mode }) => {
                 INVICTUSPAY_CUSTOMER_PHONE_NUMBER: env.INVICTUSPAY_CUSTOMER_PHONE_NUMBER,
                 INVICTUSPAY_CUSTOMER_DOCUMENT: env.INVICTUSPAY_CUSTOMER_DOCUMENT,
                 INVICTUSPAY_POSTBACK_URL: env.INVICTUSPAY_POSTBACK_URL,
+                UTMIFY_API_TOKEN: env.UTMIFY_API_TOKEN,
               })
 
               console.log('[local-pix-api] result:', result)

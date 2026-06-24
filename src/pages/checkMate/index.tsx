@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getLeadInfo } from "../../utils/leadInfo";
+import { getUtms } from "../../utils/utm";
 import i3 from "../../images/i3.png";
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
@@ -44,10 +45,12 @@ function CheckMatePage() {
 
         try {
             const lead = getLeadInfo();
+            const utms = getUtms();
             const payload = {
                 name: sanitizeName(lead?.nome || "") || sanitizeName(nome) || 'Cliente',
                 email: lead?.email || "cliente@pedemeia.app",
                 amount: valor,
+                utms,
             }
 
             console.log('[CheckMate] sending pix payload:', payload)

@@ -9,6 +9,16 @@ type VercelResponse = {
   setHeader: (name: string, value: string) => void;
 };
 
+type TrackingParameters = {
+  src?: string | null;
+  sck?: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_medium?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+};
+
 type CreatePixRequest = {
   name?: string;
   email?: string;
@@ -18,6 +28,7 @@ type CreatePixRequest = {
   offerHash?: string;
   productHash?: string;
   productTitle?: string;
+  utms?: TrackingParameters;
 };
 
 type InvictusCreateResponse = {
@@ -40,6 +51,50 @@ type InvictusCreateResponse = {
   qr_code?: string;
   pix_code?: string;
 };
+
+const UTMIFY_API_URL = "https://api.utmify.com.br/api-credentials/orders";
+
+// Envia (ou atualiza) o pedido na UTMify. Usado tanto na criação do Pix
+// (status "waiting_payment") quanto na confirmação via webhook (status
+// "paid"). A UTMify identifica o pedido pelo orderId, então os dois eventos
+// se referem ao mesmo registro.
+async function sendOrderToUtmify(order: Record<string, unknown>) {
+  const apiToken = process.env.UTMIFY_API_TOKEN;
+  if (!apiToken) {
+    console.warn("UTMIFY_API_TOKEN não configurado — pulando envio para UTMify.");
+    return;
+  }
+
+  try {
+    const response = await fetch(UTMIFY_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-token": apiToken,
+      },
+      body: JSON.stringify(order),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("UTMify respondeu com erro:", response.status, text);
+    }
+  } catch (error) {
+    console.error("Falha ao enviar pedido para UTMify:", error);
+  }
+}
+
+function normalizeTracking(utms?: TrackingParameters) {
+  return {
+    src: utms?.src ?? null,
+    sck: utms?.sck ?? null,
+    utm_source: utms?.utm_source ?? null,
+    utm_campaign: utms?.utm_campaign ?? null,
+    utm_medium: utms?.utm_medium ?? null,
+    utm_content: utms?.utm_content ?? null,
+    utm_term: utms?.utm_term ?? null,
+  };
+}
 
 const DEFAULT_API_URL = "https://api.invictuspay.app.br/api/public/v1";
 
@@ -263,6 +318,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({
         error: "O gateway não retornou o código PIX.",
         debug: text?.slice ? text.slice(0, 2000) : text,
+      });
+    }
+
+    // Registra o pedido na UTMify com os UTMs capturados no frontend.
+    // Sem isso, a UTMify nunca sabe que esse Pix existe, e a confirmação
+    // de pagamento (no webhook) não tem o que atualizar.
+    if (transactionId) {
+      await sendOrderToUtmify({
+        orderId: transactionId,
+        platform: "InvictusPay",
+        paymentMethod: "pix",
+        status: "waiting_payment",
+        createdAt: new Date().toISOString().replace("T", " ").slice(0, 19),
+        approvedDate: null,
+        refundedAt: null,
+        customer: {
+          name: body.name,
+          email: body.email,
+          phone: customerPhoneNumber || null,
+          document: customerDocument || null,
+          country: "BR",
+        },
+        products: [
+          {
+            id: productHash,
+            name: productTitle,
+            planId: offerHash,
+            planName: productTitle,
+            quantity: 1,
+            priceInCents: amountCents,
+          },
+        ],
+        commission: {
+          totalPriceInCents: amountCents,
+          gatewayFeeInCents: 0,
+          userCommissionInCents: amountCents,
+        },
+        trackingParameters: normalizeTracking(body.utms),
+        isTest: false,
       });
     }
 

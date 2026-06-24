@@ -1,3 +1,13 @@
+export type TrackingParameters = {
+  src?: string | null;
+  sck?: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_medium?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+};
+
 export type CreatePixRequest = {
   name?: string;
   email?: string;
@@ -7,6 +17,7 @@ export type CreatePixRequest = {
   offerHash?: string;
   productHash?: string;
   productTitle?: string;
+  utms?: TrackingParameters;
 };
 
 type InvictusCreateResponse = {
@@ -39,6 +50,7 @@ type PixEnv = {
   INVICTUSPAY_CUSTOMER_PHONE_NUMBER?: string;
   INVICTUSPAY_CUSTOMER_DOCUMENT?: string;
   INVICTUSPAY_POSTBACK_URL?: string;
+  UTMIFY_API_TOKEN?: string;
 };
 
 export type PixResult = {
@@ -79,6 +91,86 @@ function parseAmountToCents(amount: CreatePixRequest["amount"]): number {
 function normalizeQrCode(value?: string): string {
   if (!value) return "";
   return value.startsWith("data:") ? value : `data:image/png;base64,${value}`;
+}
+
+// Varre recursivamente a resposta coletando todos os valores string com seus
+// respectivos nomes de campo, igual em api/pix/create.ts. Sem isso, qualquer
+// variação no nome dos campos retornados pela InvictusPay (ex.: "qr_code_text"
+// em vez de "qr_code") faz a extração simples falhar silenciosamente.
+function collectStrings(value: unknown, key = "", acc: Array<{ key: string; value: string }> = []) {
+  if (typeof value === "string") {
+    acc.push({ key: key.toLowerCase(), value });
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, key, acc);
+  } else if (value && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) {
+      collectStrings(v, k, acc);
+    }
+  }
+  return acc;
+}
+
+function extractPixCode(strings: Array<{ key: string; value: string }>): string {
+  const emv = strings.find((s) => s.value.replace(/\s/g, "").startsWith("000201"));
+  if (emv) return emv.value.trim();
+
+  const byKey = strings.find(
+    (s) =>
+      /pix_?code|copia|copy_?paste|emv|qr_?code_?text|br_?code|payload/.test(s.key) &&
+      s.value.length > 20,
+  );
+  return byKey ? byKey.value.trim() : "";
+}
+
+function extractQrImage(strings: Array<{ key: string; value: string }>): string {
+  const dataUrl = strings.find((s) => s.value.startsWith("data:image"));
+  if (dataUrl) return dataUrl.value;
+
+  const base64Key = strings.find(
+    (s) => /qr/.test(s.key) && /base64|image|img/.test(s.key) && s.value.length > 100,
+  );
+  if (base64Key) return normalizeQrCode(base64Key.value);
+
+  return "";
+}
+
+const UTMIFY_API_URL = "https://api.utmify.com.br/api-credentials/orders";
+
+function normalizeTracking(utms?: TrackingParameters) {
+  return {
+    src: utms?.src ?? null,
+    sck: utms?.sck ?? null,
+    utm_source: utms?.utm_source ?? null,
+    utm_campaign: utms?.utm_campaign ?? null,
+    utm_medium: utms?.utm_medium ?? null,
+    utm_content: utms?.utm_content ?? null,
+    utm_term: utms?.utm_term ?? null,
+  };
+}
+
+async function sendOrderToUtmify(apiToken: string | undefined, order: Record<string, unknown>) {
+  if (!apiToken) {
+    console.warn("UTMIFY_API_TOKEN não configurado — pulando envio para UTMify (dev).");
+    return;
+  }
+
+  try {
+    const response = await fetch(UTMIFY_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-token": apiToken,
+      },
+      body: JSON.stringify(order),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("UTMify respondeu com erro (dev):", response.status, text);
+    }
+  } catch (error) {
+    console.error("Falha ao enviar pedido para UTMify (dev):", error);
+  }
 }
 
 function mockPixResponse(amountCents: number) {
@@ -213,15 +305,77 @@ export async function createPix(body: CreatePixRequest, env: PixEnv): Promise<Pi
   }
 
   const payloadData = data?.data || data || {};
-  const transactionId = payloadData.hash || "";
-  const qrCode = normalizeQrCode(payloadData.qr_code);
-  const copyPaste = payloadData.pix_code || "";
+  const allStrings = collectStrings(data);
+
+  const transactionId =
+    payloadData.hash || (typeof data?.hash === "string" ? data.hash : "") || "";
+
+  const copyPaste = payloadData.pix_code || extractPixCode(allStrings);
+  let qrCodeBase64 = normalizeQrCode(payloadData.qr_code) || extractQrImage(allStrings);
+
+  let qrCode = "";
+  if (!qrCodeBase64 && copyPaste) {
+    qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(
+      copyPaste,
+    )}`;
+  }
+
+  if (!copyPaste && !qrCodeBase64 && !qrCode) {
+    console.error("InvictusPay (dev): não foi possível extrair o código PIX da resposta:", {
+      keys: allStrings.map((s) => s.key),
+      body: text?.slice ? text.slice(0, 2000) : text,
+    });
+    return {
+      status: 502,
+      body: {
+        error: "O gateway não retornou o código PIX.",
+        debug: text?.slice ? text.slice(0, 2000) : text,
+      },
+    };
+  }
+
+  if (transactionId) {
+    await sendOrderToUtmify(env.UTMIFY_API_TOKEN, {
+      orderId: transactionId,
+      platform: "InvictusPay",
+      paymentMethod: "pix",
+      status: "waiting_payment",
+      createdAt: new Date().toISOString().replace("T", " ").slice(0, 19),
+      approvedDate: null,
+      refundedAt: null,
+      customer: {
+        name: body.name,
+        email: body.email,
+        phone: customerPhoneNumber || null,
+        document: customerDocument || null,
+        country: "BR",
+      },
+      products: [
+        {
+          id: productHash,
+          name: productTitle,
+          planId: offerHash,
+          planName: productTitle,
+          quantity: 1,
+          priceInCents: amountCents,
+        },
+      ],
+      commission: {
+        totalPriceInCents: amountCents,
+        gatewayFeeInCents: 0,
+        userCommissionInCents: amountCents,
+      },
+      trackingParameters: normalizeTracking(body.utms),
+      isTest: false,
+    });
+  }
 
   return {
     status: 200,
     body: {
       transactionId,
-      qrCodeBase64: qrCode,
+      qrCodeBase64,
+      qrCode,
       copyPaste,
       amount: amountCents / 100,
     },

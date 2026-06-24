@@ -80,6 +80,48 @@ function normalizeQrCode(value?: string): string {
   return value.startsWith("data:") ? value : `data:image/png;base64,${value}`;
 }
 
+// Varre recursivamente a resposta coletando todos os valores string com seus
+// respectivos nomes de campo. Isso nos permite encontrar o código PIX e o QR
+// independentemente de como a InvictusPay aninha/nomeia os campos.
+function collectStrings(value: unknown, key = "", acc: Array<{ key: string; value: string }> = []) {
+  if (typeof value === "string") {
+    acc.push({ key: key.toLowerCase(), value });
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, key, acc);
+  } else if (value && typeof value === "object") {
+    for (const [k, v] of Object.entries(value)) {
+      collectStrings(v, k, acc);
+    }
+  }
+  return acc;
+}
+
+// O "copia e cola" do PIX (payload EMV) sempre começa com "000201".
+function extractPixCode(strings: Array<{ key: string; value: string }>): string {
+  const emv = strings.find((s) => s.value.replace(/\s/g, "").startsWith("000201"));
+  if (emv) return emv.value.trim();
+
+  const byKey = strings.find(
+    (s) =>
+      /pix_?code|copia|copy_?paste|emv|qr_?code_?text|br_?code|payload/.test(s.key) &&
+      s.value.length > 20,
+  );
+  return byKey ? byKey.value.trim() : "";
+}
+
+// Procura uma imagem de QR já pronta (data URL ou base64 de imagem).
+function extractQrImage(strings: Array<{ key: string; value: string }>): string {
+  const dataUrl = strings.find((s) => s.value.startsWith("data:image"));
+  if (dataUrl) return dataUrl.value;
+
+  const base64Key = strings.find(
+    (s) => /qr/.test(s.key) && /base64|image|img/.test(s.key) && s.value.length > 100,
+  );
+  if (base64Key) return normalizeQrCode(base64Key.value);
+
+  return "";
+}
+
 function buildTransactionsUrl(apiUrl: string, apiToken: string): URL {
   // Garante que o caminho base (ex.: /api/public/v1) seja preservado ao
   // anexar /transactions, em vez de ser sobrescrito por um caminho absoluto.
@@ -196,13 +238,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const payloadData = data?.data || data || {};
-    const transactionId = payloadData.hash || "";
-    const qrCode = normalizeQrCode(payloadData.qr_code);
-    const copyPaste = payloadData.pix_code || "";
+    const allStrings = collectStrings(data);
+
+    const transactionId =
+      payloadData.hash || (typeof data?.hash === "string" ? data.hash : "") || "";
+
+    const copyPaste = payloadData.pix_code || extractPixCode(allStrings);
+    let qrCodeBase64 = normalizeQrCode(payloadData.qr_code) || extractQrImage(allStrings);
+
+    // Se a gateway não devolveu uma imagem de QR, gera uma a partir do
+    // código copia-e-cola para que o frontend sempre tenha o que exibir.
+    let qrCode = "";
+    if (!qrCodeBase64 && copyPaste) {
+      qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(
+        copyPaste,
+      )}`;
+    }
+
+    if (!copyPaste && !qrCodeBase64 && !qrCode) {
+      console.error("InvictusPay: não foi possível extrair o código PIX da resposta:", {
+        keys: allStrings.map((s) => s.key),
+        body: text?.slice ? text.slice(0, 2000) : text,
+      });
+      return res.status(502).json({
+        error: "O gateway não retornou o código PIX.",
+        debug: text?.slice ? text.slice(0, 2000) : text,
+      });
+    }
 
     return res.status(200).json({
       transactionId,
-      qrCodeBase64: qrCode,
+      qrCodeBase64,
+      qrCode,
       copyPaste,
       amount: amountCents / 100,
     });

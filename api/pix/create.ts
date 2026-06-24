@@ -222,6 +222,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const targetUrl = buildTransactionsUrl(apiUrl, apiToken);
 
+    const tracking = normalizeTracking(body.utms);
+    // Algumas integrações usam "src" como sinônimo de utm_source.
+    if (!tracking.src && tracking.utm_source) {
+      tracking.src = tracking.utm_source;
+    }
+
     const payload: Record<string, unknown> = {
       amount: amountCents,
       offer_hash: offerHash,
@@ -245,6 +251,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ],
       expire_in_days: 1,
       transaction_origin: "api",
+      // Envia UTMs para o gateway (InvictusPay) para que apareçam no painel
+      // de transações e em qualquer postback futuro. Repetimos em chaves
+      // alternativas porque diferentes endpoints da InvictusPay aceitam
+      // formatos distintos ("tracking", "utm" e campos planos).
+      tracking: {
+        src: tracking.src,
+        sck: tracking.sck,
+        utm_source: tracking.utm_source,
+        utm_campaign: tracking.utm_campaign,
+        utm_medium: tracking.utm_medium,
+        utm_content: tracking.utm_content,
+        utm_term: tracking.utm_term,
+      },
+      utm: {
+        utm_source: tracking.utm_source,
+        utm_campaign: tracking.utm_campaign,
+        utm_medium: tracking.utm_medium,
+        utm_content: tracking.utm_content,
+        utm_term: tracking.utm_term,
+      },
+      src: tracking.src,
+      sck: tracking.sck,
+      utm_source: tracking.utm_source,
+      utm_campaign: tracking.utm_campaign,
+      utm_medium: tracking.utm_medium,
+      utm_content: tracking.utm_content,
+      utm_term: tracking.utm_term,
     };
 
     if (process.env.INVICTUSPAY_POSTBACK_URL) {
@@ -355,7 +388,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           gatewayFeeInCents: 0,
           userCommissionInCents: amountCents,
         },
-        trackingParameters: normalizeTracking(body.utms),
+        trackingParameters: tracking,
         isTest: false,
       });
     }

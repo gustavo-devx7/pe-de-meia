@@ -135,7 +135,8 @@ export async function createPix(body: CreatePixRequest, env: PixEnv): Promise<Pi
     };
   }
 
-  const targetUrl = new URL("/transactions", apiUrl);
+  const base = apiUrl.endsWith("/") ? apiUrl.slice(0, -1) : apiUrl;
+  const targetUrl = new URL(`${base}/transactions`);
   targetUrl.searchParams.set("api_token", apiToken);
 
   const payload: Record<string, unknown> = {

@@ -70,9 +70,10 @@ export default defineConfig(({ mode }) => {
 
               console.log('[local-pix-api] request body:', parsedBody)
               console.log('[local-pix-api] env:', {
-                BUCKPAY_API_URL: !!env.BUCKPAY_API_URL,
-                BUCKPAY_API_KEY: !!env.BUCKPAY_API_KEY,
-                BUCKPAY_USER_AGENT: !!env.BUCKPAY_USER_AGENT,
+                INVICTUSPAY_API_URL: !!env.INVICTUSPAY_API_URL,
+                INVICTUSPAY_API_TOKEN: !!env.INVICTUSPAY_API_TOKEN,
+                INVICTUSPAY_OFFER_HASH: !!env.INVICTUSPAY_OFFER_HASH,
+                INVICTUSPAY_PRODUCT_HASH: !!env.INVICTUSPAY_PRODUCT_HASH,
               })
 
               // Normalize fields (amount may come as string with comma)
@@ -86,9 +87,14 @@ export default defineConfig(({ mode }) => {
               }
 
               const result = await createPix(parsedBody, {
-                BUCKPAY_API_URL: env.BUCKPAY_API_URL,
-                BUCKPAY_API_KEY: env.BUCKPAY_API_KEY,
-                BUCKPAY_USER_AGENT: env.BUCKPAY_USER_AGENT,
+                INVICTUSPAY_API_URL: env.INVICTUSPAY_API_URL,
+                INVICTUSPAY_API_TOKEN: env.INVICTUSPAY_API_TOKEN,
+                INVICTUSPAY_OFFER_HASH: env.INVICTUSPAY_OFFER_HASH,
+                INVICTUSPAY_PRODUCT_HASH: env.INVICTUSPAY_PRODUCT_HASH,
+                INVICTUSPAY_PRODUCT_TITLE: env.INVICTUSPAY_PRODUCT_TITLE,
+                INVICTUSPAY_CUSTOMER_PHONE_NUMBER: env.INVICTUSPAY_CUSTOMER_PHONE_NUMBER,
+                INVICTUSPAY_CUSTOMER_DOCUMENT: env.INVICTUSPAY_CUSTOMER_DOCUMENT,
+                INVICTUSPAY_POSTBACK_URL: env.INVICTUSPAY_POSTBACK_URL,
               })
 
               console.log('[local-pix-api] result:', result)

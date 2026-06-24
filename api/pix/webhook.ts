@@ -1,10 +1,6 @@
-import { createHmac, timingSafeEqual } from "crypto";
-import { createPix, readPixBody } from "../../server/pix";
-
 type VercelRequest = {
   method?: string;
   body?: unknown;
-  headers: Record<string, string | string[] | undefined>;
 };
 
 type VercelResponse = {
@@ -13,16 +9,6 @@ type VercelResponse = {
   setHeader: (name: string, value: string) => void;
 };
 
-function verifyWebhookSignature(payload: string, signature: string | undefined, secret: string): boolean {
-  if (!signature) return false;
-  const expected = createHmac("sha256", secret).update(payload).digest("hex");
-  try {
-    return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
-  } catch {
-    return false;
-  }
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Content-Type", "application/json");
 
@@ -30,26 +16,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Metodo nao permitido." });
   }
 
-  // Verificação de assinatura do webhook BuckPay
-  const webhookSecret = process.env.BUCKPAY_WEBHOOK_SECRET;
-  if (webhookSecret) {
-    const signature = req.headers["x-buckpay-signature"] as string | undefined;
-    const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-      return res.status(401).json({ error: "Assinatura invalida." });
-    }
-  }
-
   try {
-    const result = await createPix(readPixBody(req.body), {
-      BUCKPAY_API_URL: process.env.BUCKPAY_API_URL,
-      BUCKPAY_API_KEY: process.env.BUCKPAY_API_KEY,
-      BUCKPAY_USER_AGENT: process.env.BUCKPAY_USER_AGENT,
+    const payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const data = (payload && typeof payload === "object" && "data" in payload
+      ? (payload as { data?: Record<string, unknown> }).data
+      : payload) as Record<string, unknown> | undefined;
+
+    console.log("Webhook InvictusPay recebido:", {
+      event: (payload as { event?: unknown } | null)?.event ?? (payload as { type?: unknown } | null)?.type,
+      transactionId: data?.hash ?? data?.id ?? data?.transaction_id,
+      status: data?.status,
     });
 
-    return res.status(result.status).json(result.body);
+    return res.status(200).json({
+      received: true,
+      transactionId: data?.hash ?? data?.id ?? data?.transaction_id ?? null,
+      status: data?.status ?? null,
+    });
   } catch (error) {
     console.error("Erro interno Webhook:", error);
-    return res.status(500).json({ error: "Erro interno do servidor." });
+    return res.status(200).json({ received: true, error: "Erro ao processar." });
   }
 }

@@ -20,9 +20,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await createPix(readPixBody(req.body), {
-      BUCKPAY_API_URL: process.env.BUCKPAY_API_URL,
-      BUCKPAY_API_KEY: process.env.BUCKPAY_API_KEY,
-      BUCKPAY_USER_AGENT: process.env.BUCKPAY_USER_AGENT,
+      INVICTUSPAY_API_URL: process.env.INVICTUSPAY_API_URL,
+      INVICTUSPAY_API_TOKEN: process.env.INVICTUSPAY_API_TOKEN,
+      INVICTUSPAY_OFFER_HASH: process.env.INVICTUSPAY_OFFER_HASH,
+      INVICTUSPAY_PRODUCT_HASH: process.env.INVICTUSPAY_PRODUCT_HASH,
+      INVICTUSPAY_PRODUCT_TITLE: process.env.INVICTUSPAY_PRODUCT_TITLE,
+      INVICTUSPAY_CUSTOMER_PHONE_NUMBER: process.env.INVICTUSPAY_CUSTOMER_PHONE_NUMBER,
+      INVICTUSPAY_CUSTOMER_DOCUMENT: process.env.INVICTUSPAY_CUSTOMER_DOCUMENT,
+      INVICTUSPAY_POSTBACK_URL: process.env.INVICTUSPAY_POSTBACK_URL,
     });
 
     return res.status(result.status).json(result.body);

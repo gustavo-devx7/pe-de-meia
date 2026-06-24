@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getLeadInfo } from "../../utils/leadInfo";
 import i3 from "../../images/i3.png";
 import gov1 from '../../images/gov1.png';
 import gov2 from '../../images/gov2.png';
@@ -42,9 +43,10 @@ function CheckMatePage() {
         setPixCopiaCola("");
 
         try {
+            const lead = getLeadInfo();
             const payload = {
-                name: sanitizeName(nome) || 'Cliente',
-                email: "cliente@pedemeia.app",
+                name: sanitizeName(lead?.nome || "") || sanitizeName(nome) || 'Cliente',
+                email: lead?.email || "cliente@pedemeia.app",
                 amount: valor,
             }
 
